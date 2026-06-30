@@ -52,6 +52,24 @@ Outputs land in [`.claude/outputs/`](./.claude/outputs/) (plans, review notes, v
 
 ---
 
+## 3b. Team Loop (org-chart variant)
+
+Alongside the lifecycle pipeline above, this repo ships an **AI Team Loop** — an org-chart of agents (CEO → PM → Architect → FE/BE → Reviewer → Tester → QC → Release) that runs a feature through a `build → verify → refine` cycle. Its defining rule: **no role grades its own homework** — every artifact is checked by an *independent* verifier, and an engineer's *approach* is verified before code is written.
+
+| Driver | Command | What it does |
+|---|---|---|
+| Autonomous | `/team-loop` | CEO orchestrates the whole loop, spawning the `loop-*` agents and parking handoffs in `.claude/outputs/team/`. |
+| Single gate | `/team-verify` | Run one independent verify gate (G2 design critique / G3 approach / G4 review) on the latest artifact. |
+| Per role | `/team-ceo` · `/team-pm` · `/team-arch` · `/team-fe` · `/team-be` · `/team-review` · `/team-test` · `/team-qc` · `/team-release` | Run a single stage with a human checkpoint between gates. `/team-arch` takes `--verify` (G1) and `--approach` (G3) sub-modes. |
+
+- **Agents:** [`.claude/agents/team-loop/`](./.claude/agents/team-loop/) — `loop-ceo`, `loop-product-manager`, `loop-architect`, `loop-frontend-engineer`, `loop-backend-engineer`, `loop-reviewer`, `loop-tester`, `loop-qc`, `loop-release-engineer`. They read `.claude/config.md` and the shared resources, same as the lifecycle agents.
+- **Specialists:** install platform-specific implementers (`react-developer`, `react-native-developer`, `flutter-developer`, …) from the [`chuthuong2004/claude-skills`](https://github.com/chuthuong2004/claude-skills) catalog; the Architect routes the FE/BE lane to whichever matches the stack.
+- **Full playbook:** install the `ai-team-loop` skill (below) — the `loop-*` agents defer to its `references/` for the gate definitions, artifact formats, and loop state machine.
+
+**Lifecycle pipeline vs. Team Loop:** use `/1-plan`…`/6-verify` for a linear, human-checkpointed flow; use `/team-loop` when you want a CEO to drive specialists autonomously with adversarial cross-checking. They share `.claude/config.md` and `.claude/shared/`.
+
+---
+
 ## 4. Skills
 
 Higher-level capabilities under [`.claude/skills/`](./.claude/skills/). Each skill is a directory with `SKILL.md` plus optional `references/` and `assets/`. Skills auto-trigger on matching prompts; agents are invoked explicitly.

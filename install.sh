@@ -612,28 +612,6 @@ bootstrap_project() {
 }
 
 # Interactive: ask whether to bootstrap. Returns 0 = yes, 1 = no.
-ask_bootstrap() {
-  if ! have_tty; then return 1; fi
-  echo > /dev/tty
-  {
-    echo "Bootstrap a project tree at:"
-    echo "  $PWD"
-    echo "(Adds README.md, CLAUDE.md, AGENTS.md, docs/, .claude/ — existing files are skipped.)"
-    echo
-  } > /dev/tty
-  arrow_pick "Bootstrap project structure? (↑/↓ + Enter, q to cancel):" \
-      "No   — install items only" \
-      "Yes  — scaffold the tree, then install items"
-  case $? in
-    0) [ "$PICK_RESULT" -eq 1 ]; return $? ;;
-    1) info "Cancelled."; exit 130 ;;
-    2) ;;
-  esac
-  local ans
-  read_tty "Bootstrap project tree? [y/N]: " ans
-  [[ "$ans" =~ ^[Yy]$ ]]
-}
-
 # ---- Dispatch --------------------------------------------------------------
 
 install_dispatch() {
@@ -652,9 +630,24 @@ uninstall_dispatch() {
   esac
 }
 
+# Dispatch a single picked entry: the project-scaffold sentinel runs the
+# bootstrap; everything else installs as a skill/agent.
+pick_dispatch() {
+  if [ "$1" = "__scaffold__" ]; then
+    bootstrap_project "$PWD"
+  else
+    install_dispatch "$1"
+  fi
+}
+
 interactive_pick() {
   local items=() labels=()
   local s a
+  # Project scaffold is the first tickable row (unless already bootstrapped via --init).
+  if [ -d "$SCAFFOLD_SRC" ] && [ "${BOOTSTRAP_DONE:-0}" != "1" ]; then
+    items+=("__scaffold__")
+    labels+=("Project scaffold  (bootstrap README/CLAUDE.md/AGENTS.md/docs/.claude/ into $PWD)")
+  fi
   while IFS= read -r s; do
     [ -n "$s" ] && items+=("$s") && labels+=("$s  (skill)")
   done < <(list_skills)
@@ -668,12 +661,12 @@ interactive_pick() {
   fi
 
   if have_tty; then
-    arrow_pick_multi "Pick item(s) (↑/↓ move, Space toggle, a all, Enter confirm, q cancel):" "${labels[@]}"
+    arrow_pick_multi "Pick item(s) — tick the project and/or any skills/agents (↑/↓ move, Space toggle, a all, Enter confirm, q cancel):" "${labels[@]}"
     case $? in
       0)
         if [ "${#PICK_RESULTS[@]}" -eq 0 ]; then info "Nothing selected."; exit 0; fi
         local idx
-        for idx in "${PICK_RESULTS[@]}"; do install_dispatch "${items[$idx]}"; done
+        for idx in "${PICK_RESULTS[@]}"; do pick_dispatch "${items[$idx]}"; done
         return ;;
       1) info "Cancelled."; exit 130 ;;
       2) ;;
@@ -691,7 +684,7 @@ interactive_pick() {
   IFS=',' read -r -a picks <<< "$pick"
   for p in "${picks[@]}"; do
     p="${p// /}"
-    install_dispatch "${items[$((p-1))]}"
+    pick_dispatch "${items[$((p-1))]}"
   done
 }
 
@@ -724,11 +717,9 @@ main() {
 
   if [ -z "$TARGET" ]; then ask_target; fi
 
-  # Bootstrap prompt comes before scope (scope only affects item destinations;
-  # bootstrap always targets $PWD).
-  if [ "$action" = "install" ] && [ "$do_bootstrap" -eq 0 ] && [ $# -eq 0 ] && have_tty; then
-    if ask_bootstrap; then do_bootstrap=1; fi
-  fi
+  # In interactive mode the project scaffold is offered as a tickable row inside
+  # the item picker (see interactive_pick), so no separate Yes/No prompt here.
+  # The --init flag still bootstraps non-interactively, before items install.
 
   resolve_target_dst
 
@@ -740,6 +731,7 @@ main() {
 
   if [ "$do_bootstrap" -eq 1 ]; then
     bootstrap_project "$PWD" || return 1
+    BOOTSTRAP_DONE=1
   fi
 
   if [ $# -eq 0 ]; then
