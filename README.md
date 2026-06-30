@@ -8,14 +8,16 @@ One URL. Pick AI, pick scope, optionally bootstrap, pick items. Nothing is auto-
 curl -fsSL https://raw.githubusercontent.com/chuthuong2004/claude-skills/main/install.sh | bash
 ```
 
-You'll get four interactive prompts:
+You'll get three interactive prompts:
 
 ```
 1) Pick AI tool          →  Claude Code  /  Cursor
-2) Bootstrap project?    →  Yes (scaffold README/CLAUDE.md/AGENTS.md/docs/.claude/) / No
-3) Pick scope            →  user (~/.claude/)  /  project ($PWD/.claude/)   ← Claude only
-4) Pick item(s)          →  multi-select: Space toggles, Enter confirms
+2) Pick scope            →  user (~/.claude/)  /  project ($PWD/.claude/)   ← Claude only
+3) Pick item(s)          →  multi-select checklist: tick the project scaffold
+                            and/or any skills/agents. Space toggles, a = all, Enter confirms.
 ```
+
+The **project scaffold** (README/CLAUDE.md/AGENTS.md/docs/.claude/) is the first tickable row in the item checklist — tick it to bootstrap the tree alongside whatever skills/agents you select.
 
 ---
 
@@ -28,6 +30,7 @@ Workflow recipes — auto-trigger on matching prompts, enforce a strict output s
 | Skill | What it does |
 |---|---|
 | [`architecture-doc-writer`](skills/architecture-doc-writer/) | Full backend HLDs, migration plans, component deep-dives — Mermaid diagrams, state machines, queue topology, SQL schema, phased rollouts, risk registers, SLOs. Triggers on *"viết tài liệu kiến trúc"*, *"architecture doc"*, *"HLD"*, *"migration plan"*, *"RFC"*. |
+| [`ai-team-loop`](skills/ai-team-loop/) | Run a full software team as a closed **build → verify → refine** loop. A **CEO** orchestrates PM, Architect, FE/BE (+ platform specialists), Reviewer, Tester, QC and Release, where **every producer's work is checked by an independent verifier** and an engineer's *approach* is verified before code is written. Triggers on *"ship a feature end to end"*, *"run the AI team"*, *"chạy quy trình team"*, *"agent này làm xong thì agent khác verify"*, *"đề xuất kiến trúc tối ưu rồi triển khai"*. Ships the 12 agents below + `/team-loop` + `/team-verify`. |
 
 ### Subagents (`agents/<name>.md`)
 
@@ -36,6 +39,31 @@ Specialist personas with their own context window. Used via the `Task` tool or p
 | Agent | What it does |
 |---|---|
 | [`seo-expert`](agents/seo-expert.md) | Technical SEO for **Next.js App Router** — metadata API, JSON-LD, sitemaps, robots, canonical/hreflang, image SEO, Core Web Vitals, i18n. Audits new pages and PRs. Model: `sonnet`. |
+
+#### AI Team Loop roles
+
+The nine **core roles** + seven **platform specialists** that the [`ai-team-loop`](skills/ai-team-loop/) skill orchestrates. Each is installable on its own; the skill ties them into the loop.
+
+| Agent | Role | Model |
+|---|---|---|
+| [`ceo`](agents/ceo.md) | Orchestrator — frames the goal, sets acceptance criteria, runs the verify gates, makes the ship call. | `opus` |
+| [`product-manager`](agents/product-manager.md) | PM / BA — turns the brief into a spec with testable acceptance criteria. | `sonnet` |
+| [`architect`](agents/architect.md) | Architect / Tech Lead — designs the architecture **and** verifies approach (G1/G2/G3); proposes the optimal design before code. | `opus` |
+| [`frontend-engineer`](agents/frontend-engineer.md) | Generalist FE — implements the client slice when no specialist fits. | `sonnet` |
+| [`backend-engineer`](agents/backend-engineer.md) | BE — endpoints, data, migrations, authorization. | `sonnet` |
+| [`reviewer`](agents/reviewer.md) | Independent code review (G4) + optional design critic (G2). Findings only. | `opus` |
+| [`tester`](agents/tester.md) | Static/build/unit/integration (G5) with evidence; writes missing tests. | `sonnet` |
+| [`qc`](agents/qc.md) | Acceptance verification (G6) vs. the criteria, E2E/smoke, evidence-backed. | `sonnet` |
+| [`release-engineer`](agents/release-engineer.md) | Build, deploy, post-deploy verify, rollback. Refuses red gates. | `sonnet` |
+| [`react-developer`](agents/react-developer.md) | FE specialist — React web (Vite/CRA/Next SPA). | `sonnet` |
+| [`vue-developer`](agents/vue-developer.md) | FE specialist — Vue 3 / Nuxt / Vite. | `sonnet` |
+| [`react-native-developer`](agents/react-native-developer.md) | FE specialist — React Native / Expo mobile. | `sonnet` |
+| [`flutter-developer`](agents/flutter-developer.md) | FE specialist — Flutter / Dart mobile. | `sonnet` |
+| [`nodejs-developer`](agents/nodejs-developer.md) | BE specialist — Node.js (Express/NestJS/Fastify). | `sonnet` |
+| [`python-developer`](agents/python-developer.md) | BE specialist — Python (FastAPI/Django/Flask). | `sonnet` |
+| [`golang-developer`](agents/golang-developer.md) | BE specialist — Go (net/http/gin/echo/chi). | `sonnet` |
+
+> Add another specialist (e.g. `nextjs-developer`, `svelte-developer`, `dotnet-developer`) by copying the closest one — see [`skills/ai-team-loop/references/roles.md`](skills/ai-team-loop/references/roles.md) → *Adding a new specialist*.
 
 > More items will be added without breaking existing installs. The installer only touches what you select.
 
@@ -73,13 +101,20 @@ Cursor target always writes to `$PWD/AGENTS.md` (override with `CURSOR_AGENTS_FI
 
 ### Step 3 — Pick items (multi-select)
 
+The project scaffold and every skill/agent appear as tickable rows in one checklist:
+
 ```
-Pick item(s) (↑/↓ move, Space toggle, a all, Enter confirm, q cancel):
-> [x] architecture-doc-writer  (skill)
-  [x] seo-expert               (agent)
+Pick item(s) — tick the project and/or any skills/agents (↑/↓ move, Space toggle, a all, Enter confirm, q cancel):
+> [ ] Project scaffold         (bootstrap README/CLAUDE.md/AGENTS.md/docs/.claude/ into $PWD)
+  [x] architecture-doc-writer  (skill)
+  [x] ai-team-loop             (skill)
+  [x] ceo                      (agent)
+  [x] architect                (agent)
+  [ ] react-developer          (agent)
+  …  (seo-expert + the rest of the AI Team Loop roles)
 ```
 
-Toggle with `Space`, toggle all with `a`, confirm with `Enter`. Nothing happens until you confirm.
+Toggle with `Space`, toggle all with `a`, confirm with `Enter`. Nothing happens until you confirm. If you tick **Project scaffold**, it bootstraps first, then the selected skills/agents install into the fresh tree.
 
 ---
 
@@ -112,10 +147,17 @@ docs/
   config.md                                  single source of truth (ports/paths/cmds)
   agents/{planner,implementer,code-reviewer,
           cto,tester,qa-engineer,verifier,
-          deployer,devops}.md                9 specialist subagents
+          deployer,devops}.md                9 lifecycle subagents
+  agents/team-loop/loop-{ceo,product-manager,
+          architect,frontend-engineer,
+          backend-engineer,reviewer,tester,
+          qc,release-engineer}.md            9 org-chart "team loop" subagents
   commands/{0-run,1-plan,2-implement,
             3-review,4-test,5-deploy,
             6-verify}.md                     6-stage lifecycle slash commands
+  commands/{team-loop,team-verify}.md        autonomous team loop + verify gate
+  commands/team-{ceo,pm,arch,fe,be,review,
+            test,qc,release}.md              per-role team-loop stage commands
   shared/{principles,procedures,templates}.md
                                              agent-shared resources
   outputs/                                   stage handoff artifacts (with history/)
@@ -275,9 +317,13 @@ rm -rf ~/.claude/skills/architecture-doc-writer
 ├── README.md
 ├── LICENSE
 ├── install.sh
-├── agents/
-│   └── seo-expert.md              # → ~/.claude/agents/seo-expert.md  (Claude)
-│                                  # → ## Agent: seo-expert in AGENTS.md (Cursor)
+├── agents/                        # single-file subagent personas
+│   ├── seo-expert.md              # → ~/.claude/agents/seo-expert.md  (Claude)
+│   ├── ceo.md  product-manager.md  architect.md
+│   ├── frontend-engineer.md  backend-engineer.md
+│   ├── reviewer.md  tester.md  qc.md  release-engineer.md
+│   └── react-developer.md  react-native-developer.md  flutter-developer.md
+│                                  #   (the 12 ai-team-loop roles)
 ├── scaffold/                      # → starter project tree used by --init
 │   ├── README.md                  #   (copied to $PWD/README.md)
 │   ├── CLAUDE.md
@@ -285,10 +331,14 @@ rm -rf ~/.claude/skills/architecture-doc-writer
 │   ├── docs/{architecture,changelogs,plans}/
 │   └── .claude/{config.md, agents/, commands/, shared/, outputs/, skills/, templates/}
 └── skills/
-    └── architecture-doc-writer/   # → ~/.claude/skills/architecture-doc-writer/ (Claude)
-        ├── SKILL.md               # → ## Skill: architecture-doc-writer in AGENTS.md (Cursor)
-        ├── references/            # → ### References / #### <file> sub-sections
-        └── assets/                # → ### Assets / #### <file> sub-sections
+    ├── architecture-doc-writer/   # → ~/.claude/skills/architecture-doc-writer/ (Claude)
+    │   ├── SKILL.md               # → ## Skill: architecture-doc-writer in AGENTS.md (Cursor)
+    │   ├── references/            # → ### References / #### <file> sub-sections
+    │   └── assets/                # → ### Assets / #### <file> sub-sections
+    └── ai-team-loop/              # → ~/.claude/skills/ai-team-loop/ (Claude)
+        ├── SKILL.md               #   orchestrator playbook (the CEO loop)
+        ├── references/            #   loop-protocol, roles, verify-gates, handoff-artifacts
+        └── assets/                #   8 handoff-artifact templates (brief → release)
 ```
 
 ---

@@ -30,6 +30,8 @@ Map common asks to the right Claude Code primitive instead of reinventing them.
 | Deploy / rollback | `/5-deploy` |
 | Post-deploy verification | `/6-verify` |
 | Service lifecycle (start/stop/logs) | `/0-run` |
+| Ship a feature with the full team (autonomous) | `/team-loop` (CEO orchestrates the `loop-*` agents) |
+| Independently verify a design/approach/diff | `/team-verify` (one adversarial verify gate) |
 | Author an architecture doc | the `architecture-doc-writer` skill |
 
 Sub-agents are invoked via the Task tool. **Never re-implement an agent's logic inline** — if a behavior belongs in `planner`, fix it in [`.claude/agents/planner.md`](./.claude/agents/planner.md) and the next `/1-plan` will pick it up.
